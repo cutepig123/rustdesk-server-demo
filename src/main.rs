@@ -10,20 +10,20 @@ use hbb_common::{
 
 use tokio::process::Command;
 
-#[tokio::main(basic_scheduler)]
+#[tokio::main]
 async fn main() {
     {
         use hbb_common::env_logger::*;
         init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
     }
 
-    let x = Command::new("cmd")
-        .args(&["/C", "pause"])
-        .spawn()
-        .expect("command failed to start")
-        .await
-        .expect("child process encountered an error");
-    log::info!("hello");
+    // let x = Command::new("cmd")
+    //     .args(&["/C", "pause"])
+    //     .spawn()
+    //     .expect("command failed to start")
+    //     .await
+    //     .expect("child process encountered an error");
+    // log::info!("hello");
 
     let mut socket = FramedSocket::new("0.0.0.0:21116").await.unwrap();
     let mut listener = new_listener("0.0.0.0:21116", false).await.unwrap();
