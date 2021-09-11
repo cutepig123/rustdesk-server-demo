@@ -27,14 +27,16 @@ impl DerefMut for FramedSocket {
 }
 
 impl FramedSocket {
-    pub async fn new<T: ToSocketAddrs>(addr: T) -> ResultType<Self> {
+    pub async fn new<T: ToSocketAddrs + std::fmt::Debug>(addr: T) -> ResultType<Self> {
+        log::info!("New FramedSocket addr {:?}", &addr);
         let socket = UdpSocket::bind(addr).await?;
         Ok(Self(UdpFramed::new(socket, BytesCodec::new())))
     }
 
     #[allow(clippy::never_loop)]
-    pub async fn new_reuse<T: ToSocketAddrs>(addr: T) -> ResultType<Self> {
+    pub async fn new_reuse<T: ToSocketAddrs + std::fmt::Debug>(addr: T) -> ResultType<Self> {
         for addr in addr.to_socket_addrs().await? {
+            log::info!("new_reuse FramedSocket addr {:?}", addr);
             return Ok(Self(UdpFramed::new(
                 UdpSocket::from_std(super::new_socket(addr, false, true)?.into_udp_socket())?,
                 BytesCodec::new(),
@@ -45,6 +47,7 @@ impl FramedSocket {
 
     #[inline]
     pub async fn send(&mut self, msg: &impl Message, addr: SocketAddr) -> ResultType<()> {
+        log::info!("FramedSocket send {:?}", (&msg, &addr));
         self.0
             .send((bytes::Bytes::from(msg.write_to_bytes().unwrap()), addr))
             .await?;
@@ -53,13 +56,16 @@ impl FramedSocket {
 
     #[inline]
     pub async fn send_raw(&mut self, msg: &'static [u8], addr: SocketAddr) -> ResultType<()> {
+        log::info!("FramedSocket send_raw {:?}", (&msg, &addr));
         self.0.send((bytes::Bytes::from(msg), addr)).await?;
         Ok(())
     }
 
     #[inline]
     pub async fn next(&mut self) -> Option<Result<(BytesMut, SocketAddr), Error>> {
-        self.0.next().await
+        let x = self.0.next().await;
+        log::info!("FramedSocket next {:?}", (&x));
+        x
     }
 
     #[inline]
@@ -67,6 +73,7 @@ impl FramedSocket {
         if let Ok(res) =
             tokio::time::timeout(std::time::Duration::from_millis(ms), self.0.next()).await
         {
+            log::info!("FramedSocket next_timeout {:?}", res);
             res
         } else {
             None

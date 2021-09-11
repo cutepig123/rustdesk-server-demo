@@ -5,10 +5,26 @@ use hbb_common::{
     tcp::{new_listener, FramedStream},
     tokio,
     udp::FramedSocket,
+    log,
 };
+
+use tokio::process::Command;
 
 #[tokio::main(basic_scheduler)]
 async fn main() {
+    {
+        use hbb_common::env_logger::*;
+        init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "info"));
+    }
+
+    let x = Command::new("cmd")
+        .args(&["/C", "pause"])
+        .spawn()
+        .expect("command failed to start")
+        .await
+        .expect("child process encountered an error");
+    log::info!("hello");
+
     let mut socket = FramedSocket::new("0.0.0.0:21116").await.unwrap();
     let mut listener = new_listener("0.0.0.0:21116", false).await.unwrap();
     let mut rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
@@ -18,12 +34,14 @@ async fn main() {
     loop {
         tokio::select! {
             Some(Ok((bytes, addr))) = socket.next() => {
+                log::info!("UDP Received {:?}", (&bytes, &addr));
                 handle_udp(&mut socket, bytes, addr, &mut id_map).await;
             }
             Ok((stream, addr)) = listener.accept() => {
                 let mut stream = FramedStream::from(stream);
                 if let Some(Ok(bytes)) = stream.next_timeout(3000).await {
                     if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
+                        log::info!("Received {:?}", (&msg_in, &addr));
                         match msg_in.union {
                             Some(rendezvous_message::Union::punch_hole_request(ph)) => {
                                 println!("punch_hole_request {:?}", addr);
@@ -33,6 +51,7 @@ async fn main() {
                                         relay_server: relay_server.clone(),
                                         ..Default::default()
                                     });
+                                    log::info!("UDP send {:?}", (&msg_out, &addr));
                                     socket.send(&msg_out, addr.clone()).await.ok();
                                     saved_stream = Some(stream);
                                 }
@@ -52,6 +71,7 @@ async fn main() {
                                         if let Ok((stream_b, _)) = rlistener.accept().await {
                                             let mut stream_b = FramedStream::from(stream_b);
                                             stream_b.next_timeout(3_000).await;
+                                            log::info!("relay {:?}", (&id_map));
                                             relay(stream_a, stream_b, &mut socket, &mut id_map).await;
                                         }
                                     }
@@ -79,6 +99,7 @@ async fn relay(
     loop {
         tokio::select! {
             Some(Ok((bytes, addr))) = socket.next() => {
+                log::info!("received {:?}", (&bytes, &addr));
                 handle_udp(socket, bytes, addr, id_map).await;
             }
             res = peer.next() => {
@@ -106,12 +127,14 @@ async fn handle_udp(
     id_map: &mut std::collections::HashMap<String, std::net::SocketAddr>,
 ) {
     if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(&bytes) {
+        log::info!("receive {:?}", (&msg_in, &addr));
         match msg_in.union {
             Some(rendezvous_message::Union::register_peer(rp)) => {
                 println!("register_peer {:?}", addr);
                 id_map.insert(rp.id, addr);
                 let mut msg_out = RendezvousMessage::new();
                 msg_out.set_register_peer_response(RegisterPeerResponse::new());
+                log::info!("send {:?}", (&msg_out, &addr));
                 socket.send(&msg_out, addr).await.ok();
             }
             Some(rendezvous_message::Union::register_pk(_)) => {
@@ -121,6 +144,7 @@ async fn handle_udp(
                     result: register_pk_response::Result::OK.into(),
                     ..Default::default()
                 });
+                log::info!("send {:?}", (&msg_out, &addr));
                 socket.send(&msg_out, addr).await.ok();
             }
             _ => {}
