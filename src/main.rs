@@ -8,7 +8,7 @@ use hbb_common::{
     log,
 };
 
-use tokio::process::Command;
+
 
 #[tokio::main]
 async fn main() {
@@ -26,8 +26,8 @@ async fn main() {
     // log::info!("hello");
 
     let mut socket = FramedSocket::new("0.0.0.0:21116").await.unwrap();
-    let mut listener = new_listener("0.0.0.0:21116", false).await.unwrap();
-    let mut rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
+    let listener = new_listener("0.0.0.0:21116", false).await.unwrap();
+    let rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
     let mut id_map = std::collections::HashMap::new();
     let relay_server = std::env::var("IP").unwrap();
     let mut saved_stream = None;
