@@ -27,7 +27,8 @@ impl DerefMut for FramedSocket {
 }
 
 impl FramedSocket {
-    pub async fn new<T: ToSocketAddrs>(addr: T) -> ResultType<Self> {
+    pub async fn new<T: ToSocketAddrs + std::fmt::Debug>(addr: T) -> ResultType<Self> {
+        log::info!("New FramedSocket addr {:?}", &addr);
         let socket = UdpSocket::bind(addr).await?;
         Ok(Self(UdpFramed::new(socket, BytesCodec::new())))
     }
@@ -35,6 +36,7 @@ impl FramedSocket {
 
     #[inline]
     pub async fn send(&mut self, msg: &impl Message, addr: SocketAddr) -> ResultType<()> {
+        log::info!("FramedSocket send {:?}", (&msg, &addr));
         self.0
             .send((bytes::Bytes::from(msg.write_to_bytes().unwrap()), addr))
             .await?;
@@ -43,7 +45,9 @@ impl FramedSocket {
 
     #[inline]
     pub async fn next(&mut self) -> Option<Result<(BytesMut, SocketAddr), Error>> {
-        self.0.next().await
+        let x = self.0.next().await;
+        log::info!("FramedSocket next {:?}", (&x));
+        x
     }
 
     #[inline]
@@ -51,6 +55,7 @@ impl FramedSocket {
         if let Ok(res) =
             tokio::time::timeout(std::time::Duration::from_millis(ms), self.0.next()).await
         {
+            log::info!("FramedSocket next_timeout {:?}", res);
             res
         } else {
             None
