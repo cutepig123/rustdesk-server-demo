@@ -25,7 +25,7 @@ async fn main() {
     //     .expect("child process encountered an error");
     // log::info!("hello");
 
-    let mut socket = FramedSocket::new("0.0.0.0:21116").await.unwrap();
+    let mut socket = FramedSocket::new("0.0.0.0:21116".parse().expect("error")).await.unwrap();
     let listener = new_listener("0.0.0.0:21116", false).await.unwrap();
     let rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
     let mut id_map = std::collections::HashMap::new();
