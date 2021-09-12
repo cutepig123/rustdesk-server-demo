@@ -14,7 +14,7 @@ use serde_derive::{Deserialize, Serialize};
 
 pub struct FramedSocket {
     //UdpFramed<BytesCodec>
-    //myaddr: SocketAddr,
+    myaddr: SocketAddr,
     client_pub: mini_redis::client::Client,
     subscriber: mini_redis::client::Subscriber,
 }
@@ -64,6 +64,7 @@ impl FramedSocket {
         let subscriber = client.subscribe(vec![channel]).await.unwrap();
 
         Ok(Self {
+            myaddr: listen_addr,
             client_pub,
             subscriber,
         })
@@ -74,7 +75,7 @@ impl FramedSocket {
         log::info!("FramedSocket send Message {:?}", (&msg));
         let msg = Msg {
             msg: msg.write_to_bytes().unwrap(),
-            addr,
+            addr: self.myaddr.clone(),
         };
         log::info!("FramedSocket -> Msg {:?}", (&msg));
 
