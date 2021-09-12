@@ -24,12 +24,12 @@ async fn main() {
     //     .await
     //     .expect("child process encountered an error");
     // log::info!("hello");
-
-    let mut socket = FramedSocket::new("0.0.0.0:21116".parse().expect("error")).await.unwrap();
+    let relay_server = std::env::var("IP").unwrap();
+    let udp_listen_addr = format!("{}:21116", relay_server);
+    let mut socket = FramedSocket::new(udp_listen_addr.parse().expect("error")).await.unwrap();
     let listener = new_listener("0.0.0.0:21116", false).await.unwrap();
     let rlistener = new_listener("0.0.0.0:21117", false).await.unwrap();
     let mut id_map = std::collections::HashMap::new();
-    let relay_server = std::env::var("IP").unwrap();
     let mut saved_stream = None;
     loop {
         tokio::select! {

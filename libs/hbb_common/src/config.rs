@@ -13,7 +13,7 @@ use std::{
 };
 
 pub const APP_NAME: &str = "RustDesk";
-pub const BIND_INTERFACE: &str = "0.0.0.0";
+//pub const BIND_INTERFACE: &str = "0.0.0.0";
 pub const RENDEZVOUS_TIMEOUT: u64 = 12_000;
 pub const CONNECT_TIMEOUT: u64 = 18_000;
 pub const COMPRESS_LEVEL: i32 = 3;
@@ -165,7 +165,7 @@ fn patch(path: PathBuf) -> PathBuf {
 }
 
 impl Config2 {
-    fn load() -> Config2 {
+    pub fn load() -> Config2 {
         Config::load_::<Config2>("2")
     }
 
@@ -324,7 +324,8 @@ impl Config {
 
     #[inline]
     pub fn get_any_listen_addr() -> SocketAddr {
-        format!("{}:0", BIND_INTERFACE).parse().unwrap()
+        let my_ip = std::env::var("ClientIP").unwrap();
+        format!("{}:12012", my_ip).parse().unwrap()
     }
 
     pub fn get_rendezvous_server() -> SocketAddr {
